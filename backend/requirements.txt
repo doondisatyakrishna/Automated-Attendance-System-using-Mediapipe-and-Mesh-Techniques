@@ -12,4 +12,3 @@ numpy
 opencv-python-headless
 mediapipe
 email-validator
-face-recognition
