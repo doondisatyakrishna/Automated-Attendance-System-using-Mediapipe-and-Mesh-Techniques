@@ -4,12 +4,10 @@ python-dotenv
 pymongo
 passlib[bcrypt]
 python-jose[cryptography]
-sendgrid
 twilio
 pytz
 python-multipart
-# Add your specific face recognition libraries below (e.g., numpy)
 numpy
-opencv-python
+opencv-python-headless
 mediapipe
-face-recognition
+email-validator
