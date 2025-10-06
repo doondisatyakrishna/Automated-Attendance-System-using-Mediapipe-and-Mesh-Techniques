@@ -3,13 +3,21 @@ import numpy as np
 import mediapipe as mp
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
+from typing import Optional # Make sure to import Optional
 
-# --- This is the main change: We no longer import face_recognition ---
+# --- This is the corrected, modern way to initialize the Face Embedder ---
+try:
+    base_options = python.BaseOptions(model_asset_path='backend/utils/embedder.tflite')
+    # Add face-specific options like l2_normalize
+    options = vision.FaceEmbedderOptions(
+        base_options=base_options,
+        l2_normalize=True
+    )
+    embedder = vision.FaceEmbedder.create_from_options(options)
+except Exception as e:
+    print(f"Failed to initialize MediaPipe Face Embedder: {e}")
+    embedder = None
 
-# Initialize MediaPipe Face Embedder
-base_options = python.BaseOptions(model_asset_path='embedder.tflite')
-options = vision.FaceEmbedderOptions(base_options=base_options)
-embedder = vision.FaceEmbedder.create_from_options(options)
 
 def image_from_bytes(image_bytes: bytes) -> np.ndarray:
     """Converts image bytes to a numpy array."""
@@ -19,6 +27,9 @@ def image_from_bytes(image_bytes: bytes) -> np.ndarray:
 
 def get_embedding_from_image_array(img_array: np.ndarray) -> Optional[list[float]]:
     """Generates a face embedding from a numpy image array using MediaPipe."""
+    if embedder is None:
+        raise RuntimeError("Face embedder is not initialized.")
+        
     # MediaPipe expects RGB images
     rgb_image = cv2.cvtColor(img_array, cv2.COLOR_BGR2RGB)
     mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_image)
