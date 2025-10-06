@@ -7,7 +7,7 @@ from typing import Optional
 
 # This is the corrected, modern way to initialize the Face Embedder
 try:
-    # Use a relative path that works on both local and Render servers
+    # Use a path relative to the project root, which is more robust for deployment
     model_path = 'backend/utils/embedder.tflite'
     base_options = python.BaseOptions(model_asset_path=model_path)
     options = vision.FaceEmbedderOptions(
