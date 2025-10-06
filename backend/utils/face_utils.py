@@ -1,62 +1,41 @@
-# recognition_engine.py
 import cv2
-import mediapipe as mp
-import face_recognition
-from PIL import Image
 import numpy as np
-import io
-import requests
+import mediapipe as mp
+from mediapipe.tasks import python
+from mediapipe.tasks.python import vision
 
-# Initialize MediaPipe Face Mesh
-mp_face_mesh = mp.solutions.face_mesh
-face_mesh = mp_face_mesh.FaceMesh(static_image_mode=True, max_num_faces=1, min_detection_confidence=0.5)
+# --- This is the main change: We no longer import face_recognition ---
 
-def image_from_bytes(bytes_data):
-    """Loads an image from bytes and converts to a NumPy array."""
-    img = Image.open(io.BytesIO(bytes_data)).convert('RGB')
-    return np.array(img)
+# Initialize MediaPipe Face Embedder
+base_options = python.BaseOptions(model_asset_path='embedder.tflite')
+options = vision.FaceEmbedderOptions(base_options=base_options)
+embedder = vision.FaceEmbedder.create_from_options(options)
 
-def image_from_url(url):
-    """Loads an image from a URL and converts to a NumPy array."""
-    resp = requests.get(url, timeout=10)
-    img = Image.open(io.BytesIO(resp.content)).convert('RGB')
-    return np.array(img)
+def image_from_bytes(image_bytes: bytes) -> np.ndarray:
+    """Converts image bytes to a numpy array."""
+    np_arr = np.frombuffer(image_bytes, np.uint8)
+    img_np = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+    return img_np
 
-def get_embedding_from_image_array(img_array):
-    """
-    Uses MediaPipe to find the face and face_recognition to get the embedding.
-    """
-    # Process the image with MediaPipe Face Mesh to find face landmarks
-    results = face_mesh.process(cv2.cvtColor(img_array, cv2.COLOR_BGR2RGB))
-
-    if not results.multi_face_landmarks:
-        return None # No face found
-
-    # Get the bounding box of the detected face from the mesh landmarks
-    h, w, _ = img_array.shape
-    landmarks = results.multi_face_landmarks[0].landmark
-    x_min = min([lm.x for lm in landmarks]) * w
-    y_min = min([lm.y for lm in landmarks]) * h
-    x_max = max([lm.x for lm in landmarks]) * w
-    y_max = max([lm.y for lm in landmarks]) * h
+def get_embedding_from_image_array(img_array: np.ndarray) -> Optional[list[float]]:
+    """Generates a face embedding from a numpy image array using MediaPipe."""
+    # MediaPipe expects RGB images
+    rgb_image = cv2.cvtColor(img_array, cv2.COLOR_BGR2RGB)
+    mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_image)
     
-    # Define the face location in the format face_recognition expects: (top, right, bottom, left)
-    face_location = (int(y_min), int(x_max), int(y_max), int(x_min))
-    
-    # Use face_recognition to get the encoding for the located face
-    # We pass [face_location] because it expects a list of faces
-    encodings = face_recognition.face_encodings(img_array, known_face_locations=[face_location])
-    
-    if not encodings:
+    try:
+        embedding_result = embedder.embed(mp_image)
+        if embedding_result.embeddings:
+            # Return the first detected face embedding
+            return embedding_result.embeddings[0].embedding.tolist()
+        else:
+            return None # No face found
+    except Exception as e:
+        print(f"MediaPipe embedding error: {e}")
         return None
-        
-    return encodings[0].tolist()
 
-def cosine_similarity(a, b):
+def cosine_similarity(embedding1: list[float], embedding2: list[float]) -> float:
     """Calculates the cosine similarity between two embeddings."""
-    a = np.array(a)
-    b = np.array(b)
-    denom = (np.linalg.norm(a) * np.linalg.norm(b))
-    if denom == 0:
-        return -1.0
-    return float(np.dot(a, b) / denom)
+    vec1 = np.array(embedding1)
+    vec2 = np.array(embedding2)
+    return np.dot(vec1, vec2) / (np.linalg.norm(vec1) * np.linalg.norm(vec2))
