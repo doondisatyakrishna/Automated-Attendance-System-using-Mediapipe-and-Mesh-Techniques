@@ -3,19 +3,20 @@ import numpy as np
 import mediapipe as mp
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
-from typing import Optional # Make sure to import Optional
+from typing import Optional
 
-# --- This is the corrected, modern way to initialize the Face Embedder ---
+# This is the corrected, modern way to initialize the Face Embedder
 try:
-    base_options = python.BaseOptions(model_asset_path='backend/utils/embedder.tflite')
-    # Add face-specific options like l2_normalize
+    # Use a relative path that works on both local and Render servers
+    model_path = 'backend/utils/embedder.tflite'
+    base_options = python.BaseOptions(model_asset_path=model_path)
     options = vision.FaceEmbedderOptions(
         base_options=base_options,
         l2_normalize=True
     )
     embedder = vision.FaceEmbedder.create_from_options(options)
 except Exception as e:
-    print(f"Failed to initialize MediaPipe Face Embedder: {e}")
+    print(f"FATAL: Failed to initialize MediaPipe Face Embedder: {e}")
     embedder = None
 
 
@@ -28,16 +29,14 @@ def image_from_bytes(image_bytes: bytes) -> np.ndarray:
 def get_embedding_from_image_array(img_array: np.ndarray) -> Optional[list[float]]:
     """Generates a face embedding from a numpy image array using MediaPipe."""
     if embedder is None:
-        raise RuntimeError("Face embedder is not initialized.")
+        raise RuntimeError("Face embedder is not initialized. Check model path and dependencies.")
         
-    # MediaPipe expects RGB images
     rgb_image = cv2.cvtColor(img_array, cv2.COLOR_BGR2RGB)
     mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_image)
     
     try:
         embedding_result = embedder.embed(mp_image)
         if embedding_result.embeddings:
-            # Return the first detected face embedding
             return embedding_result.embeddings[0].embedding.tolist()
         else:
             return None # No face found
