@@ -1,0 +1,20 @@
+fastapi
+uvicorn
+python-dotenv
+pymongo
+passlib[bcrypt]
+python-jose[cryptography]
+twilio
+pytz
+python-multipart
+email-validator
+argon2-cffi
+sendgrid
+
+# --- Pin the core libraries that were conflicting ---
+numpy
+opencv-python-headless
+mediapipe
+dlib
+face-recognition
+scipy
