@@ -576,7 +576,7 @@ The primary goals of this project are to:
 B.Tech — Electronics and Computer Science
 
 GitHub:
-https://github.com/50001-SatyaKrishna
+https://github.com/doondisatyakrishna
 
 ---
 
